@@ -1,3 +1,13 @@
+---
+title: mgk-minecraft
+description: 
+published: true
+date: 2025-10-26T17:52:13.398Z
+tags: 
+editor: markdown
+dateCreated: 2025-10-26T17:52:10.705Z
+---
+
 # Minecraft Server on Kubernetes (Mini Guide)
 
 This guide deploys a vanilla Java Minecraft server on Kubernetes using the itzg/minecraft-server Docker image with persistent world storage.

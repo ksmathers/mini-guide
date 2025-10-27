@@ -1,3 +1,13 @@
+---
+title: mgk-step-ca
+description: 
+published: true
+date: 2025-10-26T17:52:17.079Z
+tags: 
+editor: markdown
+dateCreated: 2025-10-26T17:52:14.387Z
+---
+
 # Step-CA Certificate Authority on Kubernetes (Mini Guide)
 
 This guide deploys a step-ca server on Kubernetes for managing certificates in a homelab environment, including ACME and manual certificate management.

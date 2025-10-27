@@ -1,3 +1,13 @@
+---
+title: mgd-wikijs
+description: 
+published: true
+date: 2025-10-26T17:52:02.593Z
+tags: 
+editor: markdown
+dateCreated: 2025-10-26T17:52:00.091Z
+---
+
 # WikiJS Docker Container Setup (Mini Guide)
 
 ## ✅ Part 1: Prerequisites and Setup

@@ -1,3 +1,13 @@
+---
+title: mgk-docker-repository
+description: 
+published: true
+date: 2025-10-26T17:52:06.003Z
+tags: 
+editor: markdown
+dateCreated: 2025-10-26T17:52:03.571Z
+---
+
 # Minimal Docker Registry with Read-Through Cache on Kubernetes
 
 This guide sets up a private Docker registry on Kubernetes with read-through caching of Docker Hub images.

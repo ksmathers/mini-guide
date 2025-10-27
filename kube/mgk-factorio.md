@@ -1,3 +1,13 @@
+---
+title: mgk-factorio
+description: 
+published: true
+date: 2025-10-26T17:52:09.790Z
+tags: 
+editor: markdown
+dateCreated: 2025-10-26T17:52:06.999Z
+---
+
 # Factorio Server on Kubernetes (Mini Guide)
 
 This guide deploys a Factorio dedicated server on Kubernetes with persistent save data and proper configuration management.

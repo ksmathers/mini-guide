@@ -2,7 +2,7 @@
 title: A&K Compute Cluster
 description: Documentation for the ProxmoxVE compute cluster
 published: true
-date: 2025-10-25T21:46:59.298Z
+date: 2025-10-26T17:51:53.979Z
 tags: 
 editor: markdown
 dateCreated: 2025-10-25T17:24:09.867Z

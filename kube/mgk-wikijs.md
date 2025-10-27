@@ -1,3 +1,13 @@
+---
+title: mgk-wikijs
+description: 
+published: true
+date: 2025-10-26T17:52:20.671Z
+tags: 
+editor: markdown
+dateCreated: 2025-10-26T17:52:18.004Z
+---
+
 # WikiJS on Kubernetes (Mini Guide)
 
 This guide deploys WikiJS wiki platform on Kubernetes with PostgreSQL database and persistent storage.
