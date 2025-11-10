@@ -2,13 +2,15 @@
 title: Deployed Services
 description: 
 published: true
-date: 2025-11-10T05:35:18.072Z
+date: 2025-11-10T05:36:39.819Z
 tags: 
 editor: markdown
 dateCreated: 2025-11-10T05:23:11.388Z
 ---
 
 # Deployed Services
+
+The following services are deployed to the minikube server running on tamlyn.ank.com:
 
 |  Namespace   |  Service Name   |  IP Address   |  Ports   |
 | --- | --- | --- | --- |
