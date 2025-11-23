@@ -65,6 +65,12 @@ kubectl get pvc -n mosquitto
 ## ✅ Step 3: Configuration Setup
 
 ### 5. Create Mosquitto configuration
+
+This step includes some commented out options for setting up password authentication on 
+the mosquitto service.  If you won't be using passwords you can do steps 5 and 7 as is, 
+skipping step 6.   If you do want passwords then uncomment the relevant sections and
+complete the optional step 6 before step 7.
+
 ```bash
 kubectl apply -f - <<EOF
 apiVersion: v1
@@ -165,6 +171,11 @@ spec:
           mountPath: /mosquitto/data
         - name: log
           mountPath: /mosquitto/log
+        # Uncomment below to enable password authentication (requires Step 6)
+        # - name: passwd
+        #   mountPath: /mosquitto/config/passwd
+        #   subPath: passwd
+        #   readOnly: true
         resources:
           requests:
             memory: "64Mi"
@@ -182,6 +193,12 @@ spec:
       - name: log
         persistentVolumeClaim:
           claimName: mosquitto-log-pvc
+      # Uncomment below to enable password authentication (requires Step 6)
+      # Also update ConfigMap in Step 5 to set allow_anonymous=false and enable password_file
+      # - name: passwd
+      #   secret:
+      #     secretName: mosquitto-passwd
+      #     defaultMode: 0440
 EOF
 ```
 
@@ -281,8 +298,11 @@ sudo yum install mosquitto
 # Get the service endpoint
 MQTT_HOST=$(kubectl get svc mosquitto-service -n mosquitto -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
-# If using port-forward or NodePort, use localhost
+# If using port-forward, use localhost
 MQTT_HOST="localhost"
+
+# If using NodePort use the IP Address of the Kubernetes node where the service is deployed
+MQTT_HOST="tamlyn.ank.com"
 
 # Subscribe to test topic (in one terminal)
 mosquitto_sub -h $MQTT_HOST -p 1883 -t "test/topic" -v
