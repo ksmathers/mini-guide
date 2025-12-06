@@ -2,7 +2,7 @@
 title: PySpark in EKS
 description: 
 published: true
-date: 2025-12-06T05:11:03.613Z
+date: 2025-12-06T05:20:49.654Z
 tags: 
 editor: markdown
 dateCreated: 2025-12-06T05:11:03.613Z
@@ -33,10 +33,14 @@ dateCreated: 2025-12-06T05:11:03.613Z
 
 ## 4. Networking
 - If `kubectl` works, Spark can use the same kubeconfig.
-- No proxy needed unless firewall blocks API calls.
-- Use the EKS API endpoint from kubeconfig:
+- The spark session builder will start driver and executor pods by using a reference to the kubernetes cluster control node.
+- A code snippet setting the EKS API endpoint from your ~/.kube/config would look like this:
   ```python
-  .master("k8s://https://<EKS_API_ENDPOINT>")
+  ...
+  spark = SparkSession.builder \
+    .appName("RemoteSparkJob") \
+    .master("k8s://https://<EKS_API_ENDPOINT>") \
+  ...
   ```
 
 ---
