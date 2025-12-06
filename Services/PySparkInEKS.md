@@ -2,7 +2,7 @@
 title: PySpark in EKS
 description: 
 published: true
-date: 2025-12-06T05:20:49.654Z
+date: 2025-12-06T05:23:42.993Z
 tags: 
 editor: markdown
 dateCreated: 2025-12-06T05:11:03.613Z
@@ -52,7 +52,13 @@ FROM bitnami/spark:latest
 ADD hadoop-aws-3.x.jar /opt/spark/jars/
 ADD aws-java-sdk-bundle-1.x.jar /opt/spark/jars/
 ```
-Push to a registry accessible by EKS.
+Push to a registry accessible by EKS.  Then add a reference to that 
+image name to the session builder:
+```python
+...
+    .config("spark.kubernetes.container.image", "<your-spark-image>") \
+...
+```
 
 ---
 
@@ -103,10 +109,12 @@ spec:
           memory: "4Gi"
 ```
 
-Add to Spark config:
+Adding these to Spark session builder:
 ```python
-.config("spark.kubernetes.driver.podTemplateFile", "/path/to/driver-template.yaml") \
-.config("spark.kubernetes.executor.podTemplateFile", "/path/to/executor-template.yaml")
+...
+  .config("spark.kubernetes.driver.podTemplateFile", "/path/to/driver-template.yaml") \
+  .config("spark.kubernetes.executor.podTemplateFile", "/path/to/executor-template.yaml") \
+...
 ```
 
 ---
