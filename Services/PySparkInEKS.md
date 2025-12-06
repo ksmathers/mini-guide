@@ -2,7 +2,7 @@
 title: PySpark in EKS
 description: 
 published: true
-date: 2025-12-06T05:23:42.993Z
+date: 2025-12-06T05:26:21.271Z
 tags: 
 editor: markdown
 dateCreated: 2025-12-06T05:11:03.613Z
@@ -120,7 +120,10 @@ Adding these to Spark session builder:
 ---
 
 ## 7. PySpark Session in Jupyter
-Example:
+
+Condense all of the preceding configuration steps into your Jupyter notebook PySpark initialization step.  
+
+For example:
 ```python
 from pyspark.sql import SparkSession
 
