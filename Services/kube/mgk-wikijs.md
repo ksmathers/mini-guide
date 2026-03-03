@@ -101,6 +101,7 @@ spec:
         volumeMounts:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data
+          subPath: pgdata
         resources:
           requests:
             memory: "256Mi"
@@ -369,6 +370,7 @@ kubectl exec -n wikijs deployment/postgres -- pg_dump -U wikijs wiki > wiki-back
 
 ## 🔧 Troubleshooting
 
+- **WikiJS returns to setup screen after restart**: This indicates PostgreSQL data is not persisting. Ensure the postgres volume mount includes `subPath: pgdata` (see Step 3, item 6). If you've already deployed without this, you'll need to delete and recreate the postgres deployment and PVC to start fresh.
 - **Pods not starting**: Check resource limits and node capacity with `kubectl describe pod`
 - **Database connection failed**: Verify service names and secret values match
 - **PVC pending**: Check if cluster has dynamic provisioning or create PVs manually  

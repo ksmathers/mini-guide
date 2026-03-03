@@ -24,7 +24,6 @@ export NFS_PRIVATE_PATH="/mnt/media/private"  # Path to sensitive content (optio
 
 # Jellyfin Configuration
 export JELLYFIN_NAMESPACE="jellyfin"
-export JELLYFIN_PORT="30865"                # NodePort for access
 
 # Verify variables are set
 echo "NFS Server: $NFS_SERVER"
@@ -254,7 +253,6 @@ spec:
   - name: http
     port: 8096
     targetPort: 8096
-    nodePort: $JELLYFIN_PORT
   - name: https
     port: 8920
     targetPort: 8920
@@ -266,7 +264,7 @@ spec:
     port: 7359
     targetPort: 7359
     protocol: UDP
-  type: NodePort
+  type: LoadBalancer
 EOF
 ```
 
@@ -282,12 +280,14 @@ kubectl logs -n $JELLYFIN_NAMESPACE -l app=jellyfin --tail=30
 
 ### 7. Get Jellyfin access information
 ```bash
-# Get node IP for NodePort access
-NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
-if [ -z "$NODE_IP" ]; then
-  NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-fi
-echo "Access Jellyfin at: http://$NODE_IP:$JELLYFIN_PORT"
+# Wait for LoadBalancer IP to be assigned (MetalLB)
+kubectl wait --for=jsonpath='{.status.loadBalancer.ingress}' \
+  service/jellyfin-service -n $JELLYFIN_NAMESPACE --timeout=60s
+
+# Get LoadBalancer IP
+JELLYFIN_IP=$(kubectl get service jellyfin-service -n $JELLYFIN_NAMESPACE \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "Access Jellyfin at: http://$JELLYFIN_IP:8096"
 ```
 
 **Alternative: Port-Forward for local access:**
@@ -484,7 +484,7 @@ kubectl delete pv jellyfin-media-pv jellyfin-private-pv
 ### Namespace Information
 - **Namespace**: `jellyfin` (default)
 - **Service**: `jellyfin-service:8096`
-- **NodePort**: `30865` (default)
+- **Service Type**: LoadBalancer (MetalLB-assigned IP)
 
 ### Persistent Storage
 - **Config**: PVC `jellyfin-config-pvc` (10Gi)
@@ -502,6 +502,9 @@ kubectl delete pv jellyfin-media-pv jellyfin-private-pv
 ```bash
 # View all resources
 kubectl get all -n $JELLYFIN_NAMESPACE
+
+# Get LoadBalancer IP address
+kubectl get service jellyfin-service -n $JELLYFIN_NAMESPACE
 
 # Check pod logs
 kubectl logs -n $JELLYFIN_NAMESPACE -l app=jellyfin --tail=50
@@ -568,14 +571,17 @@ kubectl exec -n $JELLYFIN_NAMESPACE deployment/jellyfin -- ls -la /media
 - Confirm parental control ratings are set correctly
 - Test by logging in as restricted user
 
-**NodePort not accessible:**
+**LoadBalancer service not getting IP:**
 ```bash
 # Verify service configuration
 kubectl get service jellyfin-service -n $JELLYFIN_NAMESPACE
 
-# Check firewall rules allow the NodePort
-# Verify node IP addresses
-kubectl get nodes -o wide
+# Check MetalLB status and logs
+kubectl get pods -n metallb-system
+kubectl logs -n metallb-system -l component=controller
+
+# Verify MetalLB IP pool configuration
+kubectl get ipaddresspool -n metallb-system
 ```
 
 ## 🔒 Production Considerations
