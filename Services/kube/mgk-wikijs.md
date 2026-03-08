@@ -2,7 +2,7 @@
 title: mgk-wikijs
 description: 
 published: true
-date: 2025-10-26T17:52:20.671Z
+date: 2026-03-07T00:00:00.000Z
 tags: 
 editor: markdown
 dateCreated: 2025-10-26T17:52:18.004Z
@@ -11,6 +11,19 @@ dateCreated: 2025-10-26T17:52:18.004Z
 # WikiJS on Kubernetes (Mini Guide)
 
 This guide deploys WikiJS wiki platform on Kubernetes with PostgreSQL database and persistent storage.
+
+## ⚙️ Configuration Variables
+
+Set this before running any commands. The variable is referenced throughout the guide so the entire guide is copy-paste ready.
+
+> ⚠️ **Choose a unique, memorable password before proceeding.** This password protects the PostgreSQL database backing your wiki. Do not leave it as the default.
+
+```bash
+export DB_PASSWORD="change-me-to-something-unique"
+
+# Verify it is set
+echo "DB_PASSWORD: $DB_PASSWORD"
+```
 
 ## ✅ Step 1: Create Namespace and Setup
 
@@ -69,7 +82,7 @@ kubectl get pvc -n wikijs
 kubectl create secret generic postgres-secret -n wikijs \
   --from-literal=POSTGRES_DB=wiki \
   --from-literal=POSTGRES_USER=wikijs \
-  --from-literal=POSTGRES_PASSWORD=wikijspass
+  --from-literal=POSTGRES_PASSWORD="$DB_PASSWORD"
 ```
 
 ### 6. Deploy PostgreSQL database
@@ -155,6 +168,12 @@ EOF
 ```
 
 ### 9. Deploy WikiJS application
+
+> **Redeploying over an existing NodePort service?** Kubernetes cannot change a service type in-place via `kubectl apply`. Delete the old service first:
+> ```bash
+> kubectl delete service wikijs-service -n wikijs
+> ```
+
 ```bash
 kubectl apply -f - <<EOF
 apiVersion: apps/v1
@@ -218,14 +237,15 @@ kind: Service
 metadata:
   name: wikijs-service
   namespace: wikijs
+  annotations:
+    avahi.local/name: "wikijs"
 spec:
   selector:
     app: wikijs
   ports:
   - port: 3000
     targetPort: 3000
-    nodePort: 30300
-  type: NodePort
+  type: LoadBalancer
 EOF
 ```
 
@@ -257,29 +277,25 @@ kubectl logs -n wikijs -l app=postgres --tail=10
 
 ### 13. Access WikiJS web interface
 
-**Method 1: NodePort (Direct cluster access):**
+**Method 1: LoadBalancer IP (MetalLB):**
 ```bash
-# Get any node IP
-NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
-if [ -z "$NODE_IP" ]; then
-  NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-fi
-echo "Access WikiJS at: http://$NODE_IP:30300"
+# Wait for MetalLB to assign an IP
+kubectl get svc wikijs-service -n wikijs --watch
+# Once EXTERNAL-IP is assigned:
+LB_IP=$(kubectl get svc wikijs-service -n wikijs -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "Access WikiJS at: http://${LB_IP}:3000"
 ```
 
-**Method 2: Port-Forward (Local development):**
+**Method 2: mDNS (if Avahi advertiser is running):**
 ```bash
-# Run port-forward in background
+# Accessible at http://wikijs.local:3000 once the Avahi advertiser picks up the service
+avahi-resolve -n wikijs.local
+```
+
+**Method 3: Port-Forward (local troubleshooting):**
+```bash
 kubectl port-forward -n wikijs service/wikijs-service 3000:3000 &
 echo "Access WikiJS at: http://localhost:3000"
-```
-
-**Method 3: LoadBalancer (Cloud environments - optional):**
-```bash
-# Convert service to LoadBalancer if needed
-kubectl patch service wikijs-service -n wikijs -p '{"spec":{"type":"LoadBalancer"}}'
-# Wait for external IP assignment (may take several minutes)
-kubectl get service wikijs-service -n wikijs --watch
 ```
 
 ### 14. Complete WikiJS installation via web browser
@@ -342,7 +358,7 @@ kubectl delete deployment,service,pvc,secret,configmap --all -n wikijs
 ### Namespace Information
 - **Namespace**: `wikijs`
 - **PostgreSQL Service**: `postgres-service:5432`
-- **WikiJS Service**: `wikijs-service:3000`
+- **WikiJS Service**: `wikijs-service:3000` (LoadBalancer via MetalLB; resolves as `wikijs.local` via Avahi)
 
 ### Persistent Storage
 - **PostgreSQL Data**: PVC `postgres-pvc` (5Gi)
@@ -370,11 +386,14 @@ kubectl exec -n wikijs deployment/postgres -- pg_dump -U wikijs wiki > wiki-back
 
 ## 🔧 Troubleshooting
 
+- **Service still shows NodePort after apply**: `kubectl apply` cannot change service type in-place. Delete the service and re-run step 9: `kubectl delete service wikijs-service -n wikijs`
+- **Setup wizard error "relation does not exist"**: The DB schema was never created, usually because WikiJS failed to connect to PostgreSQL on first boot (DNS not ready) and then got a connection drop mid-wizard. Fix: `kubectl rollout restart deployment/wikijs -n wikijs`, wait for the pod to be ready, then re-run the setup wizard.
 - **WikiJS returns to setup screen after restart**: This indicates PostgreSQL data is not persisting. Ensure the postgres volume mount includes `subPath: pgdata` (see Step 3, item 6). If you've already deployed without this, you'll need to delete and recreate the postgres deployment and PVC to start fresh.
 - **Pods not starting**: Check resource limits and node capacity with `kubectl describe pod`
 - **Database connection failed**: Verify service names and secret values match
 - **PVC pending**: Check if cluster has dynamic provisioning or create PVs manually  
-- **NodePort not accessible**: Verify firewall rules allow port 30300 and check node IP addresses
+- **LoadBalancer IP pending**: Verify MetalLB is running (`kubectl get pods -n metallb-system`) and has an IP pool configured (`kubectl get ipaddresspool -n metallb-system`)
+- **wikijs.local not resolving**: Check Avahi advertiser is running (`kubectl get pods -n kube-system -l app=avahi-advertiser`) and that the service has an assigned IP
 - **WikiJS not accessible**: Ensure pods are ready and check service endpoints with `kubectl get endpoints`
 - **Port-forward fails**: Check if port 3000 is already in use locally
 

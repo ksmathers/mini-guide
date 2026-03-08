@@ -2,7 +2,7 @@
 title: mgk-avahi-advertiser
 description: 
 published: true
-date: 2025-11-22T00:00:00.000Z
+date: 2026-03-02T00:00:00.000Z
 tags: 
 editor: markdown
 dateCreated: 2025-11-22T00:00:00.000Z

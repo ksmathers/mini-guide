@@ -2,7 +2,7 @@
 title: mgk-docker-repository
 description: 
 published: true
-date: 2025-10-26T17:52:06.003Z
+date: 2026-03-02T00:00:00.000Z
 tags: 
 editor: markdown
 dateCreated: 2025-10-26T17:52:03.571Z
@@ -17,7 +17,7 @@ This guide sets up a private Docker registry on Kubernetes with read-through cac
 This is required if this is the first time you are creating a ConfigMap.  ConfigMap objects are used for passing 
 insecure configuration information to deployed services.  They are not suitable for storing secrets. 
 
-```
+```bash
 kubectl create namespace registry
 ```
 
@@ -25,7 +25,7 @@ kubectl create namespace registry
 
 Create a standard registry that supports pushes and pulls:
 
-```
+```bash
 kubectl apply -n registry -f - <<EOF
 apiVersion: v1
 kind: ConfigMap
@@ -52,7 +52,7 @@ EOF
 
 For pull-through caching only, replace the ConfigMap with:
 
-```
+```bash
 kubectl apply -n registry -f - <<EOF
 apiVersion: v1
 kind: ConfigMap
@@ -81,7 +81,7 @@ This creates a persistent volume with 10GB of available space together with the 
 deployment.  A deployment creates one or more pods that host your service application.
 Last it exposes a service port, mapping it to port 30000 to avoid conflicts.
 
-```
+```bash
 kubectl apply -n registry -f - <<EOF
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -156,7 +156,7 @@ Edit `/etc/docker/daemon.json` on your development machine:
 
 Restart Docker:
 
-```
+```bash
 sudo systemctl restart docker
 ```
 
@@ -164,7 +164,7 @@ sudo systemctl restart docker
 
 If using Colima on macOS, edit the Colima config:
 
-```
+```bash
 colima stop
 ```
 
@@ -178,13 +178,13 @@ docker:
 
 Restart Colima:
 
-```
+```bash
 colima start
 ```
 
 ## ✅ Step 5: Test Private Image Push/Pull
 
-```
+```bash
 NODE_IP=<NODE_IP>
 echo -e "FROM alpine:latest\nRUN echo 'k8s test' > /message.txt" > Dockerfile
 docker build -t $NODE_IP:30000/myproject/mytest:latest .
@@ -197,7 +197,7 @@ docker pull $NODE_IP:30000/myproject/mytest:latest
 
 If using pull-through cache config (Step 2b):
 
-```
+```bash
 NODE_IP=<NODE_IP>
 docker pull $NODE_IP:30000/library/alpine:latest
 docker pull $NODE_IP:30000/library/alpine:latest  # cached now, faster

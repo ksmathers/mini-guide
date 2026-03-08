@@ -2,7 +2,7 @@
 title: mgk-step-ca
 description: 
 published: true
-date: 2025-10-26T17:52:17.079Z
+date: 2026-03-02T00:00:00.000Z
 tags: 
 editor: markdown
 dateCreated: 2025-10-26T17:52:14.387Z
@@ -252,7 +252,7 @@ kubectl exec -n $CA_NAMESPACE deployment/step-ca -- step ca provisioner list
 
 ### 5. Deploy cert-manager for automated certificate management
 ```bash
-# Install cert-manager
+# Install cert-manager (update version to latest: https://github.com/cert-manager/cert-manager/releases)
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml
 
 # Wait for cert-manager to be ready

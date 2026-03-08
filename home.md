@@ -2,7 +2,7 @@
 title: A&K Compute Cluster
 description: Documentation for the ProxmoxVE compute cluster
 published: true
-date: 2025-10-26T17:51:53.979Z
+date: 2026-03-07T00:00:00.000Z
 tags: 
 editor: markdown
 dateCreated: 2025-10-25T17:24:09.867Z
@@ -17,6 +17,12 @@ The compute cluster contains a set of nodes that provide reconfigurable services
 The ProxmoxVE cluster can be managed through the WebUI on port 8006.  For example:
 [https://tango.ank.com:8006](https://tango.ank.com:8006)
 
+### sierra.ank.com \[10.0.42.38\]
+
+-   Hardware: Z2-g1a
+-   CPU: Ryzen Strix Halo AI MAX+ 395
+-   Memory: 128GB
+-   Disk: 1TB (nvme0n1) 100% allocated
 
 ### tango.ank.com \[10.0.42.39\]
 
@@ -42,13 +48,6 @@ The ProxmoxVE cluster can be managed through the WebUI on port 8006.  For exampl
 -   Disk: 2TB (nvme0n1) 25% allocated
 -   Disk: 512GB (nvme1n1) 100% allocated
 
-### zulu.ank.com \[10.0.42.49\]
-
--   Hardware: HP Elite Laptop
--   CPU: 
--   Memory:
--   Disk: 1TB (sda) 100% allocated
-
 ## Servers
 
 ### whiskey.ank.com \[10.0.42.47\]
@@ -65,7 +64,7 @@ The ProxmoxVE cluster can be managed through the WebUI on port 8006.  For exampl
 -   CPU: 8 cores
 -   Memory: 16G
 -   Disk: 128G
--   Application:
+-   Application: artifact-vault
 
 ### tamlyn.ank.com \[10.0.42.12\]
 
@@ -83,4 +82,4 @@ The ProxmoxVE cluster can be managed through the WebUI on port 8006.  For exampl
 -   CPU: 8 cores
 -   Memory: 8GB
 -   Disk: 50GB
--   Application:
+-   Application: non-prod minikube

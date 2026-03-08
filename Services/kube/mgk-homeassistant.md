@@ -2,7 +2,7 @@
 title: mgk-homeassistant
 description: 
 published: true
-date: 2025-10-26T18:00:00.000Z
+date: 2026-03-02T00:00:00.000Z
 tags: 
 editor: markdown
 dateCreated: 2025-10-26T18:00:00.000Z
@@ -292,6 +292,180 @@ sudo systemctl start bluetooth
 
 6. **MetalLB LoadBalancer**: Using LoadBalancer type with MetalLB provides a dedicated IP address for HomeAssistant, avoiding port number conflicts that can occur with NodePort services. If you have the Avahi advertiser installed, the service will be accessible at `homeassistant.local`.
 
+## 🔌 Add-ons Without HAOS/Supervisor
+
+The `ghcr.io/home-assistant/home-assistant:stable` image is **HA Container** — it runs the core HomeAssistant application but does **not** include the Supervisor or the add-on ecosystem found in Home Assistant OS (HAOS). Add-ons such as Mosquitto and Zigbee2MQTT must be deployed as separate Kubernetes workloads and connected to HomeAssistant via its integrations.
+
+### Mosquitto MQTT Broker
+
+Deploy Mosquitto as its own Kubernetes service (see [mgk-mosquitto.md](mgk-mosquitto.md) for a full guide), then point HomeAssistant at it.
+
+Add the MQTT integration via the UI:
+- Navigate to **Settings** → **Devices & Services** → **Add Integration**
+- Search for **MQTT** and enter the Mosquitto service address
+
+Or configure it in `/config/configuration.yaml` (on the HomeAssistant PVC):
+```yaml
+mqtt:
+  broker: mosquitto-service.mosquitto.svc.cluster.local
+  port: 1883
+  # username: mqttuser       # uncomment if authentication is enabled
+  # password: mqttpassword
+```
+
+Restart HomeAssistant to apply:
+```bash
+kubectl rollout restart deployment/homeassistant -n homeassistant
+```
+
+### Zigbee2MQTT
+
+Zigbee2MQTT requires access to a Zigbee USB coordinator (e.g. CC2652, ConBee II). With `driver=none` the USB device is on the host and can be passed through via a `hostPath` volume.
+
+**1. Identify the coordinator device path on the host:**
+```bash
+ls -la /dev/serial/by-id/
+# Note the symlink target, e.g. /dev/ttyUSB0 or /dev/ttyACM0
+```
+
+**2. Create a ConfigMap for Zigbee2MQTT:**
+```bash
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zigbee2mqtt-config
+  namespace: homeassistant
+data:
+  configuration.yaml: |
+    homeassistant: true
+    permit_join: false
+    mqtt:
+      base_topic: zigbee2mqtt
+      server: mqtt://mosquitto-service.mosquitto.svc.cluster.local:1883
+      # user: mqttuser       # uncomment if authentication is enabled
+      # password: mqttpassword
+    serial:
+      port: /dev/ttyUSB0    # adjust to match your coordinator device
+    frontend:
+      port: 8080
+EOF
+```
+
+**3. Create a PVC for Zigbee2MQTT data:**
+```bash
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zigbee2mqtt-data-pvc
+  namespace: homeassistant
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+```
+
+**4. Deploy Zigbee2MQTT:**
+```bash
+kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zigbee2mqtt
+  namespace: homeassistant
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: zigbee2mqtt
+  template:
+    metadata:
+      labels:
+        app: zigbee2mqtt
+    spec:
+      containers:
+      - name: zigbee2mqtt
+        image: koenkk/zigbee2mqtt:latest
+        env:
+        - name: TZ
+          value: "America/New_York"  # Adjust to your timezone
+        volumeMounts:
+        - name: config
+          mountPath: /app/data/configuration.yaml
+          subPath: configuration.yaml
+        - name: data
+          mountPath: /app/data
+        - name: coordinator
+          mountPath: /dev/ttyUSB0  # must match serial.port above
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+      volumes:
+      - name: config
+        configMap:
+          name: zigbee2mqtt-config
+      - name: data
+        persistentVolumeClaim:
+          claimName: zigbee2mqtt-data-pvc
+      - name: coordinator
+        hostPath:
+          path: /dev/ttyUSB0   # adjust to match your coordinator device
+          type: CharDevice
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zigbee2mqtt-service
+  namespace: homeassistant
+spec:
+  selector:
+    app: zigbee2mqtt
+  ports:
+  - name: frontend
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+EOF
+```
+
+**5. Verify Zigbee2MQTT is running and communicating:**
+```bash
+kubectl get pods -n homeassistant -l app=zigbee2mqtt
+kubectl logs -n homeassistant -l app=zigbee2mqtt --tail=30
+```
+
+Once running, HomeAssistant auto-discovers Zigbee2MQTT devices via MQTT discovery. Check **Settings** → **Devices & Services** for newly found devices.
+
+> **Note**: The `configuration.yaml` ConfigMap is mounted over the data directory entry for that file only. Any runtime state (device database, logs) is written to the `data` PVC and survives pod restarts.
+
+### Other Add-ons
+
+The same pattern applies to any other HAOS add-on:
+
+| HAOS Add-on | Kubernetes replacement |
+|---|---|
+| Mosquitto | `eclipse-mosquitto` container — see [mgk-mosquitto.md](mgk-mosquitto.md) |
+| Zigbee2MQTT | `koenkk/zigbee2mqtt` container — as shown above |
+| ESPHome | `ghcr.io/esphome/esphome` container, port 6052 |
+| Node-RED | `nodered/node-red` container, port 1880 |
+| MariaDB | `mariadb` container with a PVC |
+| InfluxDB | `influxdb` container with a PVC |
+| Grafana | `grafana/grafana` container — pair with InfluxDB or Prometheus |
+
+Each service should be deployed in the same `homeassistant` namespace (or its own namespace) and referenced by its Kubernetes DNS name: `<service-name>.<namespace>.svc.cluster.local`.
+
 ## 🗑️ Cleanup
 
 To remove the deployment:
@@ -302,6 +476,8 @@ kubectl delete namespace homeassistant
 ## 📚 References
 
 - [HomeAssistant Official Documentation](https://www.home-assistant.io/docs/)
+- [HA Container vs HAOS](https://www.home-assistant.io/installation/#compare-installation-methods)
 - [HomeAssistant Bluetooth Integration](https://www.home-assistant.io/integrations/bluetooth/)
+- [Zigbee2MQTT Documentation](https://www.zigbee2mqtt.io/)
 - [Kubernetes Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
 - [Minikube None Driver](https://minikube.sigs.k8s.io/docs/drivers/none/)

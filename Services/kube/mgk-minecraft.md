@@ -2,7 +2,7 @@
 title: mgk-minecraft
 description: 
 published: true
-date: 2025-10-26T17:52:13.398Z
+date: 2026-03-02T00:00:00.000Z
 tags: 
 editor: markdown
 dateCreated: 2025-10-26T17:52:10.705Z
@@ -127,7 +127,7 @@ data:
   FORCE_GAMEMODE: "false"
   GENERATE_STRUCTURES: "true"
   HARDCORE: "false"
-  MAX_BUILD_HEIGHT: "256"
+  MAX_BUILD_HEIGHT: "320"         # 256 is the pre-1.18 value; use 320 for 1.18+ (deprecated, world height now determined by dimension)
   MAX_WORLD_SIZE: "29999984"
   PVP: "true"
   SPAWN_ANIMALS: "true"
