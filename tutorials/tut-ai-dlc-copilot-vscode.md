@@ -10,13 +10,13 @@ dateCreated: 2026-04-27T00:00:00.000Z
 
 # AI-Assisted Application Development with GitHub Copilot, VS Code, copilot-cli, and Amazon AI-DLC
 
-Building a non-trivial application with an LLM agent is not just a matter of typing "write me an app." Unstructured prompts produce unstructured output — the agent invents scope, skips design, and produces code that is hard to verify. Amazon's **AI-DLC (AI-Driven Development Life Cycle)** solves this by giving the agent a structured methodology to follow: it asks you the right questions, produces a design document you approve, then generates code against that approved design. This tutorial shows you how to wire AI-DLC into GitHub Copilot running inside VS Code, and how to use the `gh copilot` CLI to complement that workflow from the terminal.
+Building a non-trivial application with an LLM agent is not just a matter of typing "write me an app." Unstructured prompts produce unstructured output — the agent invents scope, skips design, and produces code that is hard to verify. Amazon's **AI-DLC (AI-Driven Development Life Cycle)** solves this by giving the agent a structured methodology to follow: it asks you the right questions, produces a design document you approve, then generates code against that approved design. This tutorial shows you how to wire AI-DLC into GitHub Copilot running inside VS Code, and how to use the standalone **GitHub Copilot CLI** (`copilot-cli`) — a full agentic terminal tool analogous to Claude Code — to complement that workflow from the command line.
 
 By the end of this tutorial you will understand:
 
 - What AI-DLC is, what the three phases mean, and why that structure matters
 - How GitHub Copilot custom instructions work and why they are the right integration point
-- How to install the `gh copilot` CLI extension and what it adds to the workflow
+- How to install and use `copilot-cli`, the standalone Copilot terminal agent, and how it complements the VS Code workflow
 - How to bootstrap a new project so that AI-DLC is active from the first prompt
 - How to use the Inception → Construction → Operations phases to take a feature from idea to working code
 - How to add extension rules for security and testing on top of the core workflow
@@ -48,18 +48,19 @@ For GitHub Copilot, the rules are delivered via the `.github/copilot-instruction
 **Required tools:**
 
 - VS Code (any recent release) with the **GitHub Copilot** and **GitHub Copilot Chat** extensions installed
-- `gh` CLI ≥ 2.x — the GitHub CLI (`brew install gh` on macOS)
+- `copilot-cli` — the standalone GitHub Copilot terminal agent (`brew install --cask copilot-cli` on macOS)
+- A GitHub account with an active **GitHub Copilot** plan (Free, Pro, or Business)
 - `git`
 
 **Optional but useful:**
 
+- `gh` CLI ≥ 2.x — the GitHub CLI; `copilot-cli` uses it for GitHub.com operations such as creating pull requests
 - `unzip` (pre-installed on macOS/Linux)
-- `jq` (for parsing the release API response cleanly)
 
 Verify the essentials:
 
 ```bash
-gh --version && git --version && code --version
+copilot --version && git --version && code --version
 ```
 
 **Configuration variables** — set these once per project:
@@ -106,52 +107,68 @@ A one-line system prompt like "follow best practices" gives the agent no procedu
 
 ---
 
-## 🔧 Part 2: Installing the GitHub Copilot CLI Extension
+## 🔧 Part 2: Installing GitHub Copilot CLI
 
-The `gh copilot` CLI extension brings Copilot assistance to the terminal. It is distinct from the VS Code extension — it is useful for quick questions during development, for explaining shell commands before you run them, and for suggesting commands you do not know the syntax of.
+GitHub Copilot CLI (`copilot-cli`) is a standalone agentic terminal application — analogous to Claude Code or Amazon Q Developer CLI. You run it from your project directory and hold a full conversation with it: it can read and modify files, execute shell commands, interact with GitHub.com, create pull requests, and run tests, all from a single terminal session. It is entirely separate from the VS Code extension.
 
-### Install the extension
+### Install copilot-cli
+
+On macOS, install via Homebrew Cask:
 
 ```bash
-gh auth login   # if not already authenticated
-gh extension install github/gh-copilot
+brew install --cask copilot-cli
 ```
+
+On Linux, download the binary for your architecture from the [GitHub releases page](https://github.com/github/copilot-cli/releases) and place it on your `$PATH`.
 
 Verify:
 
 ```bash
-gh copilot --version
+copilot --version
 ```
 
-### What it provides
+### Authenticate
 
-The extension adds two subcommands:
+On first launch, `copilot` will open a browser window to authenticate with your GitHub account. Your Copilot plan must be active — the CLI draws from the same subscription as the VS Code extension.
 
-| Command | What it does |
-|---|---|
-| `gh copilot suggest` | Suggests a shell command that accomplishes what you describe in plain English |
-| `gh copilot explain` | Explains what a given shell command does |
+### Modes of use
 
-Example — you want to find all files modified in the last 24 hours but cannot remember the `find` flags:
+`copilot-cli` has two interfaces:
+
+| Interface | How to start | Best for |
+|---|---|---|
+| **Interactive** | `copilot` (no arguments) | Iterative development sessions, multi-step tasks |
+| **Programmatic** | `copilot -p "prompt"` | Scripted or CI tasks with a single well-defined goal |
+
+In the interactive interface, you hold a running conversation. The agent can enqueue follow-up instructions mid-response and you can steer it as it works.
+
+**Plan mode** is a second mode within the interactive interface. Press Shift+Tab to toggle into it. In plan mode the agent analyzes your request, asks clarifying questions, and builds a structured implementation plan before writing any code — mirroring the intent of AI-DLC's Inception phase. Use plan mode for larger tasks directly in the terminal.
+
+> **Concept:** `copilot-cli` and AI-DLC's rules in Copilot Chat are complementary, not redundant. AI-DLC in VS Code Chat produces *durable, committed artifacts* (`aidlc-docs/`) that capture design decisions in version control. `copilot-cli` in the terminal is better suited for *execution tasks* — running the code, fixing a failing test, creating a pull request — where you need shell access and do not need a permanent design record.
+
+### Tool approval and security
+
+The first time the agent needs to execute or modify a file it will prompt you:
+
+```
+1. Yes
+2. Yes, and approve TOOL for the rest of this session
+3. No, and tell Copilot what to do differently (Esc)
+```
+
+Option 1 approves this single invocation. Option 2 approves the tool for the session. Option 3 cancels and lets you redirect. For CI or scripted use you can pre-approve with flags:
 
 ```bash
-gh copilot suggest "find all files modified in the last 24 hours, excluding .git"
+# Allow all tools — use only in a sandboxed environment
+copilot -p "Run the test suite and fix any failures" --allow-all-tools
+
+# Allow specific tools, deny destructive ones
+copilot --allow-all-tools --deny-tool='shell(rm)' --deny-tool='shell(git push)'
 ```
 
-The agent asks whether you want a `git` command, a `gh` command, or a generic shell command, then outputs a runnable suggestion. You can copy it, run it directly, or ask for a revision.
+> ⚠️ **Warning:** `--allow-all-tools` grants the agent the same file and shell access you have. Only use it in a container or VM with limited blast radius. Never run it from your home directory.
 
-> **Concept:** `gh copilot suggest` is not AI-DLC-aware — it is a standalone terminal assistant. The two tools complement each other: use AI-DLC in the VS Code chat for design and implementation sessions; use `gh copilot suggest` in the terminal for one-off command lookups during those sessions.
-
-### Optional: set up a shell alias
-
-Many users add an alias so `?` calls the suggest subcommand:
-
-```bash
-# Add to ~/.zshrc or ~/.bashrc
-eval "$(gh copilot alias -- zsh)"   # or bash
-```
-
-After reloading your shell, `ghcs "your question"` invokes suggest and `ghce "command"` invokes explain.
+Always launch `copilot` from your project directory, not your home directory. On first launch from a new directory, the agent will ask you to confirm you trust the files there.
 
 ---
 
@@ -412,36 +429,64 @@ On the next AI-DLC session, the agent will discover the new `.opt-in.md` file an
 
 ## 🔧 Part 7: Using copilot-cli During a Development Session
 
-The `gh copilot` CLI integrates naturally with an AI-DLC session. While Copilot Chat in VS Code handles design and code generation, the terminal extension handles operational questions that arise during implementation.
+Once AI-DLC in VS Code Chat has produced approved design artifacts and Construction is underway, `copilot-cli` becomes the right tool for implementation-time tasks that require shell access.
 
-### Common patterns
-
-**Verifying the filesystem watcher works:**
+### Starting a session in your project
 
 ```bash
-gh copilot explain "inotifywait -m -e close_write --format '%w%f' /tmp/watch"
+cd "$PROJECT_DIR"
+copilot
 ```
 
-The agent explains each flag and what the output format means — useful when you are wiring the watcher output to your application and need to understand the exact event format.
+The agent loads the workspace context, prompts you to confirm you trust the directory, and presents a welcome interface. From here you type instructions in plain English.
 
-**Finding a flag you cannot remember:**
+### Common patterns during a Construction phase
 
-```bash
-gh copilot suggest "run pytest and show only failed tests with full output, no capture"
+**Running the test suite and fixing failures:**
+
+```
+Run the tests. For each failure, show me the failing assertion and propose a fix. Wait for my approval before changing any file.
 ```
 
-Output:
+The agent executes the tests, reads the output, identifies root causes, proposes patches, and applies them only after you approve each tool use.
+
+**Implementing a unit from the AI-DLC construction plan:**
+
+After the design artifacts are approved in VS Code, you can hand off a specific unit to `copilot-cli` for implementation:
+
 ```
-pytest -v --no-header -rN --tb=short --no-cov -x 2>&1 | grep -E "FAILED|ERROR|assert"
+Using aidlc-docs/design.md as the specification, implement Unit 3: Validator.
+The interface is defined in section "Component Interfaces". Write the implementation
+and a corresponding test file. Do not proceed beyond Unit 3.
 ```
 
-The agent suggests a command; you review it before running.
+This keeps the agent scoped — it reads the committed design document and stays within the unit boundary you specify.
 
-**Understanding a cryptic error:**
+**Creating a pull request after a Construction unit is complete:**
 
-```bash
-gh copilot explain "OSError: [Errno 28] No space left on device when writing to /tmp"
 ```
+The changes for Unit 3 are ready. Commit them with a message that references
+the construction plan, then create a pull request against main titled
+"feat: add JSON schema validator (AI-DLC Unit 3)".
+```
+
+The agent stages the files, writes the commit, pushes the branch, and creates the PR on GitHub.com. You are listed as the author.
+
+**Investigating a runtime error:**
+
+```
+The file watcher is emitting events for files that were moved into the directory
+by another process, not just newly created ones. Show me the relevant code and
+explain why this is happening.
+```
+
+The agent reads the relevant source file, inspects the filesystem event type handling, and explains the cause — without modifying anything until you ask it to.
+
+### Using plan mode for unplanned tasks
+
+If a task arises during Construction that was not covered in the AI-DLC design — for example, a dependency conflict that requires refactoring a shared utility — switch to plan mode in `copilot-cli` by pressing Shift+Tab before describing the task. The agent will ask clarifying questions and produce an implementation plan for your review before touching any files.
+
+> **Tip:** Use `/compact` in the `copilot-cli` session if it approaches its context limit during a long Construction phase. The agent compresses its history without losing the thread of the conversation.
 
 ---
 
@@ -475,16 +520,30 @@ gh copilot explain "OSError: [Errno 28] No space left on device when writing to 
 
 ---
 
-**Symptom:** `gh copilot suggest` returns "command not found" after installing the extension.
+**Symptom:** `copilot` returns "command not found" after installing via Homebrew.
 
-**Cause:** The shell alias has not been configured, or the extension installation failed silently.
+**Cause:** The Homebrew Cask installs the binary but it may not be on your `$PATH` immediately, or the cask installation failed silently.
 
 **Resolution:**
 ```bash
-gh extension list              # confirm github/gh-copilot is listed
-gh extension upgrade copilot   # upgrade if installed but stale
-gh copilot suggest "test"      # invoke directly to verify
+brew list --cask copilot-cli   # confirm the cask is installed
+brew reinstall --cask copilot-cli
+which copilot                  # verify the binary is on PATH
+copilot --version              # confirm it launches
 ```
+
+If `which copilot` returns nothing, add the Homebrew bin directory to your PATH:
+```bash
+echo 'export PATH="/opt/homebrew/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+```
+
+---
+
+**Symptom:** `copilot-cli` modifies a file you did not intend to change.
+
+**Cause:** You approved a tool (option 2 — "for the rest of this session") that was broader than intended, or used `--allow-all-tools`.
+
+**Resolution:** Use `git diff` to inspect all changes before committing. Revert unintended changes with `git checkout -- <file>`. In future sessions, prefer option 1 (per-invocation approval) for any tool involving writes until you are confident in the agent's behavior.
 
 ---
 
@@ -494,4 +553,6 @@ gh copilot suggest "test"      # invoke directly to verify
 - [AI-DLC Method Definition Paper](https://prod.d13rzhkk8cj2z0.amplifyapp.com/) — the methodology's theoretical foundation
 - [AWS Blog: AI-Driven Development Life Cycle](https://aws.amazon.com/blogs/devops/ai-driven-development-life-cycle/) — introductory overview from the AWS DevOps blog
 - [GitHub Copilot custom instructions docs](https://code.visualstudio.com/docs/copilot/customization/custom-instructions) — VS Code documentation on the `copilot-instructions.md` mechanism
-- [gh copilot CLI documentation](https://docs.github.com/en/copilot/github-copilot-in-the-cli/about-github-copilot-in-the-cli) — official reference for the terminal extension
+- [About GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-copilot-cli) — official reference for the standalone terminal agent
+- [Installing GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli) — installation instructions for all platforms
+- [Homebrew Cask: copilot-cli](https://formulae.brew.sh/cask/copilot-cli) — Homebrew formula for macOS installation
