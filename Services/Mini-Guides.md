@@ -53,12 +53,24 @@ Welcome to the mini guides documentation repository! This repository contains co
   - Uses factoriotools/factorio image with persistent save data and mod support
   - Includes server administration, backup procedures, and performance tuning
 
+### Tutorials
+
+- **[AI-Assisted Application Development with GitHub Copilot, VS Code, copilot-cli, and Amazon AI-DLC](../tutorials/tut-ai-dlc-copilot-vscode.md)**
+  - End-to-end tutorial for using AI-DLC workflow rules with GitHub Copilot in VS Code
+  - Covers installation of AI-DLC rules, the `gh copilot` CLI extension, and the three-phase Inception → Construction → Operations workflow
+  - Includes extension authoring for custom security and compliance rules
+
+- **[EKS with Dynamic Graviton Node Provisioning Using Karpenter](../tutorials/tut-eks-graviton-karpenter.md)**
+  - Deep dive into EKS cluster setup with Karpenter for ARM64 Graviton node provisioning
+  - Explains Graviton instance families, Karpenter's provisioning loop, and EKS Pod Identity
+
 ## 🎯 Guide Categories
 
 | Category | Count | Description |
 |----------|-------|-------------|
 | Docker   | 2     | Container runtime and registry management |
 | Kubernetes | 5   | Container orchestration and cluster management |
+| Tutorials | 2   | Conceptual deep-dives and workflow guides |
 
 ## 🚀 Quick Start
 
@@ -84,6 +96,9 @@ mini-guides/
     ├── mgk-minecraft.md                # Minecraft server on Kubernetes
     ├── mgk-step-ca.md                  # Step-CA certificate authority
     └── mgk-factorio.md                 # Factorio dedicated server
+└── tutorials/                          # Conceptual tutorials
+    ├── tut-eks-graviton-karpenter.md   # EKS with Graviton + Karpenter
+    └── tut-ai-dlc-copilot-vscode.md   # AI-assisted dev with AI-DLC + GitHub Copilot
 ```
 
 ## 🤝 Contributing
